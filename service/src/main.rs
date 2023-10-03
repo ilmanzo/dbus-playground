@@ -1,26 +1,41 @@
+use chrono::{DateTime, Local};
 use std::{error::Error, future::pending};
-use tokio;
 use zbus::{dbus_interface, ConnectionBuilder};
 
-struct Greeter {
-    count: u64,
+struct MyService {
+    call_count: u64,
+    call_timestamp: Option<DateTime<Local>>,
 }
 
-#[dbus_interface(name = "org.zbus.MyGreeter1")]
-impl Greeter {
+#[dbus_interface(name = "org.zbus.MyService")]
+impl MyService {
     // Can be `async` as well.
-    fn say_hello(&mut self, name: &str) -> String {
-        self.count += 1;
-        format!("Hello {}! I have been called {} times.", name, self.count)
+    fn reply(&mut self) -> String {
+        let msg = match self.call_count {
+            0 => "This is the first time you call me!".into(),
+            _ => format!(
+                "I have been called {} times, last at {}",
+                self.call_count,
+                self.call_timestamp
+                    .expect("unable to get local time")
+                    .to_rfc3339()
+            ),
+        };
+        self.call_count += 1;
+        self.call_timestamp = Some(Local::now());
+        msg
     }
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let greeter = Greeter { count: 0 };
+    let svc = MyService {
+        call_count: 0,
+        call_timestamp: None,
+    };
     let _conn = ConnectionBuilder::session()?
-        .name("org.zbus.MyGreeter")?
-        .serve_at("/org/zbus/MyGreeter", greeter)?
+        .name("org.zbus.MyService")?
+        .serve_at("/org/zbus/MyService", svc)?
         .build()
         .await?;
 
