@@ -9,16 +9,16 @@ struct MyService {
 
 #[dbus_interface(name = "org.zbus.MyService")]
 impl MyService {
-    // Can be `async` as well.
-    fn reply(&mut self) -> String {
+    async fn call_me(&mut self, name: &str) -> String {
         let msg = match self.call_count {
-            0 => "This is the first time you call me!".into(),
+            0 => format!("Hi {}, this is the first time you call me!", name),
             _ => format!(
-                "I have been called {} times, last at {}",
+                "Hello {}, I have been called {} times, last was at {}",
+                name,
                 self.call_count,
                 self.call_timestamp
                     .expect("unable to get local time")
-                    .to_rfc3339()
+                    .to_rfc2822()
             ),
         };
         self.call_count += 1;
